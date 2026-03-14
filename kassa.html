@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Управление Банком</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body { font-family: sans-serif; padding: 40px; background: #fff; }
+        .box { max-width: 400px; border: 1px solid #ddd; padding: 20px; border-radius: 8px; }
+        input { width: 100%; padding: 10px; margin: 10px 0; box-sizing: border-box; }
+        button { width: 100%; padding: 10px; background: #3498db; color: white; border: none; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <div class="box">
+        <h2>Регистрация карты</h2>
+        <input id="a_card" placeholder="Номер карты">
+        <input id="a_pin" placeholder="PIN">
+        <input id="a_bal" type="number" placeholder="Начальный баланс">
+        <button onclick="create()">СОЗДАТЬ КАРТУ</button>
+    </div>
+
+    <script>
+        const URL = 'https://shswkhgwrxsulqqczbjj.supabase.co';
+        const KEY = 'ВСТАВЬ_СЮДА_СВОЙ_ANON_KEY';
+        const sb = supabase.createClient(URL, KEY);
+
+        async function create() {
+            const n = document.getElementById('a_card').value;
+            const p = document.getElementById('a_pin').value;
+            const b = document.getElementById('a_bal').value;
+            await sb.from('bank').insert({ card_num: n, pin: p, balance: b });
+            alert("Клиент зарегистрирован!");
+        }
+    </script>
+</body>
+</html>
