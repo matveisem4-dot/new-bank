@@ -2,58 +2,53 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Банковский Терминал</title>
+    <title>Терминал оплаты</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        body { background: #2c3e50; font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-        .terminal { background: #ecf0f1; width: 340px; border-radius: 20px; padding: 40px; box-shadow: 0 20px 50px rgba(0,0,0,0.3); text-align: center; }
-        .screen { background: #34495e; color: #2ecc71; padding: 25px; border-radius: 10px; font-size: 32px; font-family: monospace; margin-bottom: 30px; }
-        input { width: 100%; padding: 15px; margin: 10px 0; border: 1px solid #bdc3c7; border-radius: 8px; font-size: 20px; box-sizing: border-box; text-align: center; }
-        .btn { width: 100%; padding: 15px; background: #27ae60; color: white; border: none; border-radius: 8px; font-size: 20px; cursor: pointer; transition: 0.2s; }
-        .btn:hover { background: #219150; }
+        body { font-family: sans-serif; background: #0f172a; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .terminal { background: #ffffff; width: 350px; border-radius: 24px; padding: 40px; text-align: center; }
+        .display { background: #1e293b; color: #10b981; padding: 30px; border-radius: 12px; font-size: 2rem; font-family: monospace; margin-bottom: 20px; }
+        input { width: 100%; padding: 15px; margin: 10px 0; border: 1px solid #cbd5e1; border-radius: 10px; font-size: 1.2rem; box-sizing: border-box; text-align: center; }
+        .btn-pay { width: 100%; padding: 15px; background: #10b981; color: white; border: none; border-radius: 10px; font-size: 1.2rem; cursor: pointer; font-weight: bold; }
     </style>
 </head>
 <body>
 
 <div class="terminal">
-    <div id="display" class="screen">ЖДУ ЗАКАЗ</div>
+    <div class="display" id="screen">ВСТАВЬТЕ КАРТУ</div>
     <div id="ui" style="display:none">
-        <input type="text" id="c_num" placeholder="НОМЕР КАРТЫ">
-        <input type="password" id="c_pin" placeholder="PIN">
-        <button class="btn" onclick="pay()">ОПЛАТИТЬ</button>
+        <input type="text" id="card" placeholder="НОМЕР КАРТЫ">
+        <input type="password" id="pin" placeholder="PIN">
+        <button class="btn-pay" onclick="doPay()">ПОДТВЕРДИТЬ</button>
     </div>
 </div>
 
 <script>
-    const URL = 'https://shswkhgwrxsulqqczbjj.supabase.co';
-    const KEY = 'ВСТАВЬ_СЮДА_СВОЙ_ANON_KEY';
-    const sb = supabase.createClient(URL, KEY);
-    const SID = 'STATION_01';
+    const S_URL = 'https://shswkhgwrxsulqqczbjj.supabase.co';
+    const S_KEY = 'ВСТАВЬ_СВОЙ_КЛЮЧ_ANON_ЗДЕСЬ';
+    const sb = supabase.createClient(S_URL, S_KEY);
+    const TID = 'STATION_01';
 
-    sb.channel('t1').on('postgres_changes', 
-        { event: 'UPDATE', schema: 'public', table: 'sessions', filter: `id=eq.${SID}` }, 
-        (p) => {
-            if (p.new.status === 'paying') {
-                document.getElementById('display').innerText = p.new.total + " ₽";
-                document.getElementById('ui').style.display = 'block';
-            }
+    sb.channel('term').on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'sessions', filter: `id=eq.${TID}` }, (p) => {
+        if(p.new.status === 'paying') {
+            document.getElementById('screen').innerText = p.new.total + " ₽";
+            document.getElementById('ui').style.display = 'block';
         }
-    ).subscribe();
+    }).subscribe();
 
-    async function pay() {
-        const card = document.getElementById('c_num').value;
-        const pin = document.getElementById('c_pin').value;
-        
-        const { data: dbCard } = await sb.from('bank').select('*').eq('card_num', card).single();
-        const { data: sess } = await sb.from('sessions').select('*').eq('id', SID).single();
+    async function doPay() {
+        const c = document.getElementById('card').value;
+        const p = document.getElementById('pin').value;
+        const { data: bank } = await sb.from('bank').select('*').eq('card_num', c).single();
+        const { data: sess } = await sb.from('sessions').select('*').eq('id', TID).single();
 
-        if (dbCard && dbCard.pin === pin && dbCard.balance >= sess.total) {
-            await sb.from('bank').update({ balance: dbCard.balance - sess.total }).eq('card_num', card);
-            await sb.from('sessions').update({ status: 'success' }).eq('id', SID);
-            document.getElementById('display').innerText = "УСПЕШНО";
+        if(bank && bank.pin === p && bank.balance >= sess.total) {
+            await sb.from('bank').update({ balance: bank.balance - sess.total }).eq('card_num', c);
+            await sb.from('sessions').update({ status: 'success' }).eq('id', TID);
+            document.getElementById('screen').innerText = "✅ ГОТОВО";
             document.getElementById('ui').style.display = 'none';
         } else {
-            alert("ОТКАЗ: Ошибка карты или средств");
+            alert("Ошибка! Проверьте данные или баланс.");
         }
     }
 </script>
