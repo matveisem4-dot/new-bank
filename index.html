@@ -2,108 +2,118 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Global Bank | Кассовый узел</title>
+    <title>Global POS System</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; margin: 0; padding: 20px; }
-        .wrapper { max-width: 1000px; margin: auto; display: grid; grid-template-columns: 1fr 350px; gap: 20px; }
-        .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-        h2 { border-bottom: 2px solid #3498db; padding-bottom: 10px; color: #2c3e50; }
-        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
-        .product { padding: 15px; border: 1px solid #ddd; border-radius: 8px; cursor: pointer; text-align: center; transition: 0.2s; background: #fff; }
-        .product:hover { border-color: #3498db; background: #eef7ff; }
-        .cart-item { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #eee; }
-        .total { font-size: 28px; font-weight: bold; color: #27ae60; text-align: right; margin: 20px 0; }
-        .btn-pay { width: 100%; padding: 20px; background: #3498db; color: white; border: none; border-radius: 8px; font-size: 18px; cursor: pointer; font-weight: bold; }
-        .btn-pay:disabled { background: #ccc; cursor: not-allowed; }
-        #status { text-align: center; color: #7f8c8d; margin-top: 10px; font-weight: bold; }
-        @media print { body * { visibility: hidden; } #print-receipt, #print-receipt * { visibility: visible; } #print-receipt { position: absolute; left: 0; top: 0; width: 100%; } }
+        :root { --primary: #2563eb; --success: #16a34a; --bg: #f8fafc; }
+        body { font-family: 'Inter', sans-serif; background: var(--bg); margin: 0; padding: 20px; color: #1e293b; }
+        .container { max-width: 1100px; margin: auto; display: grid; grid-template-columns: 1fr 400px; gap: 20px; }
+        .card { background: white; padding: 25px; border-radius: 16px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
+        h2 { margin-top: 0; font-size: 1.5rem; color: #0f172a; border-bottom: 2px solid #f1f5f9; padding-bottom: 10px; }
+        .input-group { display: flex; gap: 10px; margin-bottom: 20px; }
+        input { padding: 12px; border: 1px solid #e2e8f0; border-radius: 8px; flex: 1; font-size: 1rem; }
+        .btn { padding: 12px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; transition: 0.2s; }
+        .btn-add { background: var(--primary); color: white; }
+        .btn-cash { background: #64748b; color: white; width: 100%; margin-top: 10px; }
+        .btn-card { background: var(--success); color: white; width: 100%; margin-top: 10px; }
+        .cart-item { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #f1f5f9; }
+        .total { font-size: 2rem; font-weight: 800; text-align: right; margin: 20px 0; color: #0f172a; }
+        #status-tag { text-align: center; font-weight: bold; padding: 10px; border-radius: 8px; background: #f1f5f9; }
+        @media print { body * { visibility: hidden; } #receipt-print, #receipt-print * { visibility: visible; } #receipt-print { position: absolute; top: 0; left: 0; width: 100%; } }
     </style>
 </head>
 <body>
 
-<div class="wrapper">
+<div class="container">
     <div class="card">
-        <h2>📦 Каталог товаров</h2>
-        <div class="grid">
-            <div class="product" onclick="add('Смартфон X', 85000)">📱 Смартфон<br>85 000 ₽</div>
-            <div class="product" onclick="add('Ноутбук Pro', 120000)">💻 Ноутбук<br>120 000 ₽</div>
-            <div class="product" onclick="add('Наушники', 15000)">🎧 Наушники<br>15 000 ₽</div>
-            <div class="product" onclick="add('Зарядка', 2500)">🔌 Зарядка<br>2 500 ₽</div>
+        <h2>📦 Добавление товара</h2>
+        <div class="input-group">
+            <input type="text" id="in-name" placeholder="Название товара">
+            <input type="number" id="in-price" placeholder="Цена">
+            <button class="btn btn-add" onclick="addItem()">Добавить</button>
         </div>
+        <div id="cart-items">
+            </div>
     </div>
 
     <div class="card">
-        <h2>🧾 Текущий чек</h2>
-        <div id="cart-list" style="min-height: 250px;"></div>
-        <div class="total" id="total-price">0 ₽</div>
-        <button id="pay-button" class="btn-pay" onclick="requestPayment()">ОПЛАТИТЬ КАРТОЙ</button>
-        <div id="status">Система готова</div>
+        <h2>💰 Оплата</h2>
+        <div class="total" id="total-display">0 ₽</div>
+        <button class="btn btn-card" onclick="payByCard()">💳 ОПЛАТА КАРТОЙ</button>
+        <button class="btn btn-cash" onclick="payByCash()">💵 НАЛИЧНЫЕ</button>
+        <div id="status-tag" style="margin-top:20px">КАССА ГОТОВА</div>
     </div>
 </div>
 
-<div id="print-receipt" style="display:none; font-family: monospace; width: 300px; padding: 20px; border: 1px solid #000;">
+<div id="receipt-print" style="display:none; font-family: monospace; padding: 20px; width: 300px;">
     <center>
-        <h3>GLOBAL BANK POS</h3>
-        <p>КАССОВЫЙ ЧЕК</p>
+        <h3>МОЙ МАГАЗИН</h3>
+        <p>ЧЕК ПРОДАЖИ</p>
         <hr>
-        <div id="receipt-items"></div>
+        <div id="r-items"></div>
         <hr>
-        <h2 id="receipt-total"></h2>
-        <p id="receipt-date"></p>
+        <h2 id="r-total"></h2>
+        <p>Тип оплаты: <span id="r-type"></span></p>
+        <p>Дата: <span id="r-date"></span></p>
         <p>СПАСИБО ЗА ПОКУПКУ!</p>
     </center>
 </div>
 
 <script>
-    const URL = 'https://shswkhgwrxsulqqczbjj.supabase.co';
-    const KEY = 'ВСТАВЬ_СЮДА_СВОЙ_ANON_KEY';
-    const supabaseClient = supabase.createClient(URL, KEY);
-    const STATION_ID = 'STATION_01';
-
+    const S_URL = 'https://shswkhgwrxsulqqczbjj.supabase.co';
+    const S_KEY = 'ВСТАВЬ_СВОЙ_КЛЮЧ_ANON_ЗДЕСЬ';
+    const supabase = window.supabase.createClient(S_URL, S_KEY);
+    
     let cart = [];
     let total = 0;
+    const TID = 'STATION_01';
 
-    function add(name, price) {
+    function addItem() {
+        const name = document.getElementById('in-name').value;
+        const price = parseFloat(document.getElementById('in-price').value);
+        if(!name || !price) return;
+
         cart.push({name, price});
         total += price;
-        updateUI();
+        render();
+        document.getElementById('in-name').value = '';
+        document.getElementById('in-price').value = '';
     }
 
-    function updateUI() {
-        const list = document.getElementById('cart-list');
-        list.innerHTML = cart.map(i => `<div class="cart-item"><span>${i.name}</span><span>${i.price} ₽</span></div>`).join('');
-        document.getElementById('total-price').innerText = total + " ₽";
+    function render() {
+        document.getElementById('cart-items').innerHTML = cart.map(i => `
+            <div class="cart-item"><span>${i.name}</span><b>${i.price} ₽</b></div>
+        `).join('');
+        document.getElementById('total-display').innerText = total + " ₽";
     }
 
-    async function requestPayment() {
-        if (total === 0) return;
-        document.getElementById('pay-button').disabled = true;
-        document.getElementById('status').innerText = "⏳ Ожидание оплаты...";
-
-        await supabaseClient.from('sessions').upsert({
-            id: STATION_ID, total: total, status: 'paying', cart: cart
-        });
-
-        // Слушаем подтверждение от терминала
-        supabaseClient.channel('pos').on('postgres_changes', 
-            { event: 'UPDATE', schema: 'public', table: 'sessions', filter: `id=eq.${STATION_ID}` }, 
-            (payload) => {
-                if (payload.new.status === 'success') {
-                    document.getElementById('status').innerText = "✅ ОПЛАЧЕНО";
-                    printCheck(payload.new);
-                }
-            }
-        ).subscribe();
-    }
-
-    function printCheck(data) {
-        document.getElementById('receipt-total').innerText = "ИТОГО: " + data.total + " ₽";
-        document.getElementById('receipt-items').innerHTML = data.cart.map(i => `<div>${i.name} ... ${i.price}₽</div>`).join('');
-        document.getElementById('receipt-date').innerText = new Date().toLocaleString();
+    async function payByCard() {
+        if(total === 0) return;
+        document.getElementById('status-tag').innerText = "⏳ ОЖИДАНИЕ ТЕРМИНАЛА...";
+        await supabase.from('sessions').upsert({ id: TID, total: total, status: 'paying', cart: cart });
         
+        // Ждем сигнал от терминала
+        supabase.channel('kassa').on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'sessions', filter: `id=eq.${TID}` }, (p) => {
+            if(p.new.status === 'success') finish('КАРТА');
+        }).subscribe();
+    }
+
+    function payByCash() {
+        if(total === 0) return;
+        const given = prompt("Внесено наличных:", total);
+        if(given >= total) {
+            alert("Сдача: " + (given - total) + " ₽");
+            finish('НАЛИЧНЫЕ');
+        }
+    }
+
+    function finish(type) {
+        document.getElementById('r-items').innerHTML = cart.map(i => `<div>${i.name} ... ${i.price}₽</div>`).join('');
+        document.getElementById('r-total').innerText = total + " ₽";
+        document.getElementById('r-type').innerText = type;
+        document.getElementById('r-date').innerText = new Date().toLocaleString();
         window.print();
-        setTimeout(() => location.reload(), 2000);
+        location.reload();
     }
 </script>
 </body>
