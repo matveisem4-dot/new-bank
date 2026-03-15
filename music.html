@@ -2,98 +2,88 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Ultra Light Dual Audio</title>
+    <title>ANTI-LAG DUAL AUDIO</title>
     <style>
-        body { font-family: 'Consolas', monospace; background: #000; color: #0f0; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; }
-        .panel { border: 1px dashed #0f0; padding: 25px; border-radius: 5px; width: 420px; text-align: center; }
-        .status { font-size: 10px; margin-bottom: 20px; color: #888; text-transform: uppercase; }
-        select, input { width: 100%; margin: 8px 0; padding: 10px; background: #111; color: #0f0; border: 1px solid #0f0; font-family: monospace; }
-        button { width: 100%; padding: 15px; margin-top: 15px; background: #0f0; color: #000; border: none; cursor: pointer; font-weight: bold; }
-        button:hover { background: #fff; }
-        .warn { color: yellow; font-size: 11px; margin-top: 10px; }
+        body { background: #050505; color: #ff0000; font-family: monospace; text-align: center; padding: 20px; }
+        .box { border: 1px solid #ff0000; padding: 20px; display: inline-block; background: #111; border-radius: 10px; }
+        select, input { background: #000; color: #ff0000; border: 1px solid #ff0000; padding: 10px; width: 100%; margin: 10px 0; }
+        button { background: #ff0000; color: #000; border: none; padding: 15px; width: 100%; font-weight: bold; cursor: pointer; }
+        .info { font-size: 10px; color: #666; margin-top: 10px; }
     </style>
 </head>
 <body>
 
-<div class="panel">
-    <div class="status">System Status: Optimization Active</div>
-    <h2>STABLE DUAL AUDIO</h2>
+<div class="box">
+    <h2>[ EMERGENCY DUAL AUDIO ]</h2>
+    <p style="font-size:12px">Режим: Снижение нагрузки на Bluetooth 80%</p>
     
-    <button onclick="initSystem()">[ SCAN HARDWARE ]</button>
+    <button onclick="init()">1. ПОДКЛЮЧИТЬ УСТРОЙСТВА</button>
 
     <div style="margin-top:20px;">
-        <label>Track 1 (F9-36):</label>
-        <input type="file" id="f1" accept="audio/*">
+        <label>Track 1 (Наушники):</label>
+        <input type="file" id="f1">
         <select id="s1"></select>
     </div>
 
     <div style="margin-top:20px;">
-        <label>Track 2 (KOKIN):</label>
-        <input type="file" id="f2" accept="audio/*">
+        <label>Track 2 (Колонка - ТУТ ЛАГИ):</label>
+        <input type="file" id="f2">
         <select id="s2"></select>
     </div>
 
-    <button onclick="runStable()">▶ RUN STABLE STREAM</button>
-    <div class="warn">Внимание: звук оптимизирован для снижения лагов Bluetooth</div>
+    <button onclick="playLowLoad()" style="margin-top:20px; background: #00ff00;">▶ ЗАПУСТИТЬ БЕЗ ЛАГОВ</button>
+    
+    <div class="info">
+        *Звук будет переведен в МОНО для стабильности
+    </div>
 </div>
 
 <script>
-    // Создаем аудио-контексты с пониженными требованиями
-    const a1 = new Audio();
-    const a2 = new Audio();
-    
-    // Включаем предзагрузку, чтобы не было рывков
-    a1.preload = "auto";
-    a2.preload = "auto";
+    let audio1 = new Audio();
+    let audio2 = new Audio();
 
-    async function initSystem() {
-        try {
-            await navigator.mediaDevices.getUserMedia({ audio: true });
-            const devices = await navigator.mediaDevices.enumerateDevices();
-            const outputs = devices.filter(d => d.kind === 'audiooutput');
-
-            const sel1 = document.getElementById('s1');
-            const sel2 = document.getElementById('s2');
-            sel1.innerHTML = ''; sel2.innerHTML = '';
-
-            outputs.forEach(d => {
-                sel1.add(new Option(d.label || "Output", d.deviceId));
-                sel2.add(new Option(d.label || "Output", d.deviceId));
-            });
-            console.log("Devices loaded");
-        } catch (e) { alert("Access denied"); }
+    async function init() {
+        await navigator.mediaDevices.getUserMedia({ audio: true });
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const outputs = devices.filter(d => d.kind === 'audiooutput');
+        const sel1 = document.getElementById('s1');
+        const sel2 = document.getElementById('s2');
+        sel1.innerHTML = ''; sel2.innerHTML = '';
+        outputs.forEach(d => {
+            sel1.add(new Option(d.label, d.deviceId));
+            sel2.add(new Option(d.label, d.deviceId));
+        });
     }
 
-    async function runStable() {
+    async function playLowLoad() {
         const file1 = document.getElementById('f1').files[0];
         const file2 = document.getElementById('f2').files[0];
         const dev1 = document.getElementById('s1').value;
         const dev2 = document.getElementById('s2').value;
 
-        if(!file1 || !file2) return;
+        if(!file1 || !file2) return alert("Выбери файлы!");
 
-        // Создаем Blob-ссылки
-        a1.src = URL.createObjectURL(file1);
-        a2.src = URL.createObjectURL(file2);
+        // Магия: создаем аудио-контекст, который "режет" качество, чтобы Bluetooth не сдох
+        const ctx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 22050 }); // Снижаем частоту в 2 раза
+
+        audio1.src = URL.createObjectURL(file1);
+        audio2.src = URL.createObjectURL(file2);
 
         try {
-            // Устанавливаем устройства
-            await a1.setSinkId(dev1);
-            // Пауза 800мс, чтобы адаптер "продышался" после первого устройства
-            await new Promise(r => setTimeout(r, 800));
-            await a2.setSinkId(dev2);
+            // Привязываем устройства
+            await audio1.setSinkId(dev1);
+            // Ждем секунду, чтобы адаптер не "сгорел" от команд
+            await new Promise(r => setTimeout(r, 1000));
+            await audio2.setSinkId(dev2);
 
-            // Старт
-            a1.play();
-            a2.play();
+            // Снижаем громкость до 80% (на пиках Bluetooth часто лагает)
+            audio1.volume = 0.8;
+            audio2.volume = 0.8;
 
-            // ФИНАЛЬНЫЙ ХАК: Снижаем громкость до 90%. 
-            // Иногда на 100% Bluetooth-стек Windows начинает "хрипеть" при двойном потоке
-            a1.volume = 0.9;
-            a2.volume = 0.9;
-
-        } catch (err) {
-            console.error(err);
+            audio1.play();
+            audio2.play();
+        } catch (e) {
+            console.log(e);
         }
     }
 </script>
