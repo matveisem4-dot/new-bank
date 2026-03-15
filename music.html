@@ -2,117 +2,98 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Dual Audio PC - Stable Version</title>
+    <title>Ultra Light Dual Audio</title>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background: #1a1a1a; color: white; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; flex-direction: column; }
-        .player-card { background: #2d2d2d; padding: 30px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); width: 450px; }
-        select, input { width: 100%; margin: 10px 0; padding: 12px; border-radius: 5px; border: none; background: #404040; color: white; box-sizing: border-box; }
-        button { width: 100%; padding: 15px; margin-top: 10px; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; transition: 0.3s; }
-        .btn-init { background: #3498db; color: white; }
-        .btn-play { background: #2ecc71; color: white; font-size: 1.2em; }
-        .btn-play:disabled { background: #555; cursor: not-allowed; }
-        .track-box { border-bottom: 1px solid #444; padding-bottom: 15px; margin-bottom: 15px; }
-        h2 { text-align: center; color: #2ecc71; margin-top: 0; }
-        #debug { background: #000; color: #0f0; padding: 10px; border-radius: 5px; font-family: monospace; font-size: 11px; margin-top: 15px; width: 450px; box-sizing: border-box; max-height: 100px; overflow-y: auto; }
+        body { font-family: 'Consolas', monospace; background: #000; color: #0f0; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+        .panel { border: 1px dashed #0f0; padding: 25px; border-radius: 5px; width: 420px; text-align: center; }
+        .status { font-size: 10px; margin-bottom: 20px; color: #888; text-transform: uppercase; }
+        select, input { width: 100%; margin: 8px 0; padding: 10px; background: #111; color: #0f0; border: 1px solid #0f0; font-family: monospace; }
+        button { width: 100%; padding: 15px; margin-top: 15px; background: #0f0; color: #000; border: none; cursor: pointer; font-weight: bold; }
+        button:hover { background: #fff; }
+        .warn { color: yellow; font-size: 11px; margin-top: 10px; }
     </style>
 </head>
 <body>
 
-<div class="player-card">
-    <h2>JS Dual Audio PC</h2>
+<div class="panel">
+    <div class="status">System Status: Optimization Active</div>
+    <h2>STABLE DUAL AUDIO</h2>
     
-    <button class="btn-init" onclick="getAudioDevices()">1. НАЙТИ BLUETOOTH УСТРОЙСТВА</button>
-    <p id="status" style="font-size: 12px; color: #aaa; text-align: center;">Подключите колонку и наушники к Windows</p>
+    <button onclick="initSystem()">[ SCAN HARDWARE ]</button>
 
-    <div class="track-box">
-        <label>Трек 1 (Наушники):</label>
-        <input type="file" id="file1" accept="audio/*">
-        <select id="select1"><option value="">Выбор...</option></select>
+    <div style="margin-top:20px;">
+        <label>Track 1 (F9-36):</label>
+        <input type="file" id="f1" accept="audio/*">
+        <select id="s1"></select>
     </div>
 
-    <div class="track-box">
-        <label>Трек 2 (Колонка):</label>
-        <input type="file" id="file2" accept="audio/*">
-        <select id="select2"><option value="">Выбор...</option></select>
+    <div style="margin-top:20px;">
+        <label>Track 2 (KOKIN):</label>
+        <input type="file" id="f2" accept="audio/*">
+        <select id="s2"></select>
     </div>
 
-    <button id="playBtn" class="btn-play" onclick="playSimultaneously()">▶ ЗАПУСТИТЬ ОДНОВРЕМЕННО</button>
+    <button onclick="runStable()">▶ RUN STABLE STREAM</button>
+    <div class="warn">Внимание: звук оптимизирован для снижения лагов Bluetooth</div>
 </div>
 
-<div id="debug">System: Жду инициализации...</div>
-
 <script>
-    const audio1 = new Audio();
-    const audio2 = new Audio();
-    const dbg = document.getElementById('debug');
+    // Создаем аудио-контексты с пониженными требованиями
+    const a1 = new Audio();
+    const a2 = new Audio();
+    
+    // Включаем предзагрузку, чтобы не было рывков
+    a1.preload = "auto";
+    a2.preload = "auto";
 
-    function log(msg) {
-        const t = new Date().toLocaleTimeString();
-        dbg.innerHTML += `<div>[${t}] ${msg}</div>`;
-        dbg.scrollTop = dbg.scrollHeight;
-    }
-
-    async function getAudioDevices() {
+    async function initSystem() {
         try {
-            log("Запрос прав доступа...");
             await navigator.mediaDevices.getUserMedia({ audio: true });
             const devices = await navigator.mediaDevices.enumerateDevices();
             const outputs = devices.filter(d => d.kind === 'audiooutput');
 
-            const s1 = document.getElementById('select1');
-            const s2 = document.getElementById('select2');
-            s1.innerHTML = ''; s2.innerHTML = '';
+            const sel1 = document.getElementById('s1');
+            const sel2 = document.getElementById('s2');
+            sel1.innerHTML = ''; sel2.innerHTML = '';
 
             outputs.forEach(d => {
-                const name = d.label || `Device ${d.deviceId.substring(0,5)}`;
-                s1.add(new Option(name, d.deviceId));
-                s2.add(new Option(name, d.deviceId));
+                sel1.add(new Option(d.label || "Output", d.deviceId));
+                sel2.add(new Option(d.label || "Output", d.deviceId));
             });
-
-            log("Устройства загружены.");
-            document.getElementById('status').innerText = "Готово! Выберите устройства.";
-        } catch (err) {
-            log("Ошибка: " + err.message);
-        }
+            console.log("Devices loaded");
+        } catch (e) { alert("Access denied"); }
     }
 
-    async function playSimultaneously() {
-        const f1 = document.getElementById('file1').files[0];
-        const f2 = document.getElementById('file2').files[0];
-        const dev1 = document.getElementById('select1').value;
-        const dev2 = document.getElementById('select2').value;
+    async function runStable() {
+        const file1 = document.getElementById('f1').files[0];
+        const file2 = document.getElementById('f2').files[0];
+        const dev1 = document.getElementById('s1').value;
+        const dev2 = document.getElementById('s2').value;
 
-        if (!f1 || !f2 || !dev1 || !dev2) {
-            alert("Выбери 2 файла и 2 устройства!");
-            return;
-        }
+        if(!file1 || !file2) return;
 
-        document.getElementById('playBtn').disabled = true;
+        // Создаем Blob-ссылки
+        a1.src = URL.createObjectURL(file1);
+        a2.src = URL.createObjectURL(file2);
 
         try {
-            log("Подготовка потока 1...");
-            audio1.src = URL.createObjectURL(f1);
-            await audio1.setSinkId(dev1);
-            log("Поток 1 привязан.");
+            // Устанавливаем устройства
+            await a1.setSinkId(dev1);
+            // Пауза 800мс, чтобы адаптер "продышался" после первого устройства
+            await new Promise(r => setTimeout(r, 800));
+            await a2.setSinkId(dev2);
 
-            // ПАУЗА 500мс для Bluetooth-адаптера
-            log("Пауза для стабилизации Bluetooth...");
-            await new Promise(r => setTimeout(r, 500));
+            // Старт
+            a1.play();
+            a2.play();
 
-            log("Подготовка потока 2...");
-            audio2.src = URL.createObjectURL(f2);
-            await audio2.setSinkId(dev2);
-            log("Поток 2 привязан.");
+            // ФИНАЛЬНЫЙ ХАК: Снижаем громкость до 90%. 
+            // Иногда на 100% Bluetooth-стек Windows начинает "хрипеть" при двойном потоке
+            a1.volume = 0.9;
+            a2.volume = 0.9;
 
-            log("Синхронный старт...");
-            await Promise.all([audio1.play(), audio2.play()]);
-            log("Воспроизведение запущено!");
-
-        } catch (e) {
-            log("КРИТИЧЕСКАЯ ОШИБКА: " + e.message);
-            alert("Ошибка! Попробуйте еще раз. Если колонка отключается — Windows блокирует второй поток.");
-        } finally {
-            document.getElementById('playBtn').disabled = false;
+        } catch (err) {
+            console.error(err);
         }
     }
 </script>
